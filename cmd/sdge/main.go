@@ -27,14 +27,13 @@ var (
 
 func main() {
     fmt.Print("\033[H\033[2J") // Limpiar pantalla
-    showHeader()
     
     lastActivity = time.Now()
     
     for {
         // Verificar expiración de sesión
         if currentUser != nil && time.Since(lastActivity) > sessionTimeout {
-            fmt.Println("Sesión expirada por inactividad. Por favor inicie sesión nuevamente.")
+            fmt.Println("Sesión expirada por inactividad. Por favor, inicie sesión nuevamente.")
             currentUser = nil
             waitForEnter()
             continue
