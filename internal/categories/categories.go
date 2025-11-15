@@ -29,7 +29,7 @@ type User struct {
     Plan        string
     AgeRating   string
     IsAdmin     bool
-    CreatedAt   time.Time    // Ahora time.Time está definido
-    LastLogin   time.Time    // Ahora time.Time está definido
+    CreatedAt   time.Time    
+    LastLogin   time.Time    
     Preferences map[string]string
 }
