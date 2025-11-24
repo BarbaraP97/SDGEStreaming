@@ -31,7 +31,7 @@ var (
 
 // Inicializo contenido audiovisual de ejemplo
 func init() {
-    AddContent("El Viaje Infinito", "Película", "Ciencia Ficción", 120, "Adolescente", "Una aventura épica por el espacio", 2024, "Director X")
+    AddContent("El Viaje Infinito", "Película", "Ciencia Ficción", 120, "Adolescente", "Una aventura épica por el espacio", 2024, "Director Armando Garbi")
     AddContent("Misterios del Océano", "Documental", "Documental", 90, "Infantil", "Descubre los secretos del mar", 2023, "Documentalista Jeff Corwin")
     AddContent("Risas en la Ciudad", "Serie", "Comedia", 45, "Adolescente", "Comedia sobre la vida urbana", 2024, "Creador Pancho Córdova")
 }
