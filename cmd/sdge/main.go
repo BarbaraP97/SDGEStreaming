@@ -49,10 +49,10 @@ func main() {
 }
 
 func showHeader() {
-	fmt.Println("╔══════════════════════════════════════════════════════════╗")
-	fmt.Println("║ SDGEStreaming Versión 1.0.0-AA1                        ║")
+	fmt.Println("╔════════════════════════════════════════════════════════╗")
+	fmt.Println("║ SDGEStreaming Versión 1.0.0-AA2 Paso 1                 ║")
 	fmt.Println("║ Sistema de Gestión de Contenido Audiovisual y Audio    ║")
-	fmt.Println("╚══════════════════════════════════════════════════════════╝")
+	fmt.Println("╚════════════════════════════════════════════════════════╝")
 	fmt.Println()
 }
 
@@ -289,11 +289,39 @@ func showPlaybackHistory() {
 	if len(entries) == 0 {
 		fmt.Println("No tienes historial de reproducción.")
 	} else {
-		for _, e := range entries {
-			fmt.Printf("• %s ID %d - %s\n", 
-				strings.Title(e.ContentType),
-				e.ContentID,
-				e.Timestamp.Format("02/01/2006 15:04"))
+for _, e := range entries {
+			timestamp := e.Timestamp.Format("02/01/2006 15:04")
+			if e.ContentType == "audiovisual" {
+				c, err := audiovisual.GetByID(e.ContentID)
+				if err != nil {
+					fmt.Printf("• [Audiovisual] ID %d - NO DISPONIBLE (%s)\n", e.ContentID, timestamp)
+					continue
+				}
+				if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("• [Audiovisual] ID %d - RESTRINGIDO (%s)\n", e.ContentID, timestamp)
+					continue
+				}
+				fmt.Printf("• [Audiovisual] %s (%s)\n", c.Title, timestamp)
+				fmt.Printf("   ID: %d | Tipo: %s | Género: %s\n", c.ID, c.Type, c.Genre)
+				fmt.Printf("   Duración: %s | Año: %d | Director: %s\n", utils.FormatDuration(c.Duration), c.ReleaseYear, c.Director)
+				fmt.Printf("   Clasificación: %s | Rating: %s\n", c.AgeRating, utils.FormatRating(c.AverageRating))
+				fmt.Println("────────────────────────────────────────────────────────────")
+			} else if e.ContentType == "audio" {
+				c, err := audio.GetByID(e.ContentID)
+				if err != nil {
+					fmt.Printf("• [Audio] ID %d - NO DISPONIBLE (%s)\n", e.ContentID, timestamp)
+					continue
+				}
+				if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("• [Audio] ID %d - RESTRINGIDO (%s)\n", e.ContentID, timestamp)
+					continue
+				}
+				fmt.Printf("• [Audio] %s (%s)\n", c.Title, timestamp)
+				fmt.Printf("   ID: %d | Tipo: %s | Género: %s\n", c.ID, c.Type, c.Genre)
+				fmt.Printf("   Duración: %s | Artista: %s | Álbum: %s\n", utils.FormatDuration(c.Duration), c.Artist, c.Album)
+				fmt.Printf("   Clasificación: %s | Rating: %s\n", c.AgeRating, utils.FormatRating(c.AverageRating))
+				fmt.Println("────────────────────────────────────────────────────────────")
+			}
 		}
 	}
 
@@ -312,16 +340,40 @@ func showMyList() {
 		fmt.Println("No tienes contenido en tu lista.")
 	} else {
 		favorites := profiles.GetFavorites(currentUser.ID)
-		for _, fav := range favorites {
-			if fav.ContentType == "audiovisual" {
-				c, err := audiovisual.GetByID(fav.ContentID)
-				if err == nil && contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
-					fmt.Printf("[Audiovisual] ID %d: %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration))
-				}
-			} else if fav.ContentType == "audio" {
-				c, err := audio.GetByID(fav.ContentID)
-				if err == nil && contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
-					fmt.Printf("[Audio] ID %d: %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration) )
+		if len(favorites) == 0 {
+			fmt.Println("No tienes contenido en tu lista.")
+		} else {
+			for _, fav := range favorites {
+				if fav.ContentType == "audiovisual" {
+					c, err := audiovisual.GetByID(fav.ContentID)
+					if err != nil {
+						fmt.Printf("★ [Audiovisual] ID %d - NO DISPONIBLE\n", fav.ContentID)
+						continue
+					}
+					if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+						fmt.Printf("★ [Audiovisual] ID %d - RESTRINGIDO\n", fav.ContentID)
+						continue
+					}
+					fmt.Printf("★ [Audiovisual] %s\n", c.Title)
+					fmt.Printf("   ID: %d | Tipo: %s | Género: %s\n", c.ID, c.Type, c.Genre)
+					fmt.Printf("   Duración: %s | Año: %d | Director: %s\n", utils.FormatDuration(c.Duration), c.ReleaseYear, c.Director)
+					fmt.Printf("   Clasificación: %s | Rating: %s\n", c.AgeRating, utils.FormatRating(c.AverageRating))
+					fmt.Println("────────────────────────────────────────────────────────────")
+				} else if fav.ContentType == "audio" {
+					c, err := audio.GetByID(fav.ContentID)
+					if err != nil {
+						fmt.Printf("★ [Audio] ID %d - NO DISPONIBLE\n", fav.ContentID)
+						continue
+					}
+					if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+						fmt.Printf("★ [Audio] ID %d - RESTRINGIDO\n", fav.ContentID)
+						continue
+					}
+					fmt.Printf("★ [Audio] %s\n", c.Title)
+					fmt.Printf("   ID: %d | Tipo: %s | Género: %s\n", c.ID, c.Type, c.Genre)
+					fmt.Printf("   Duración: %s | Artista: %s | Álbum: %s\n", utils.FormatDuration(c.Duration), c.Artist, c.Album)
+					fmt.Printf("   Clasificación: %s | Rating: %s\n", c.AgeRating, utils.FormatRating(c.AverageRating))
+					fmt.Println("────────────────────────────────────────────────────────────")
 				}
 			}
 		}
@@ -492,8 +544,24 @@ func showAudiovisualContent(isGuest bool) {
 		if contentIDStr != "0" {
 			contentID, err := strconv.Atoi(contentIDStr)
 			if err == nil && contentID > 0 {
+				// Primero verificamos que el contenido exista y sea accesible
+				c, err := audiovisual.GetByID(contentID)
+				if err != nil {
+					fmt.Println("Contenido no encontrado.")
+					waitForEnter()
+					return
+				}
+				if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Println("No tienes acceso a este contenido por tu clasificación de edad.")
+					waitForEnter()
+					return
+				}
+				// Solo si es válido, registramos y calificamos
 				history.AddPlayback(currentUser.ID, contentID, "audiovisual")
 				rateAudiovisualContent(contentID)
+			} else {
+				fmt.Println("ID inválido.")
+				waitForEnter()
 			}
 		}
 	} else {
@@ -532,8 +600,24 @@ func showAudioContent(isGuest bool) {
 		if contentIDStr != "0" {
 			contentID, err := strconv.Atoi(contentIDStr)
 			if err == nil && contentID > 0 {
+				// Verificar existencia y acceso
+				c, err := audio.GetByID(contentID)
+				if err != nil {
+					fmt.Println("Contenido no encontrado.")
+					waitForEnter()
+					return
+				}
+				if !contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Println("No tienes acceso a este contenido por tu clasificación de edad.")
+					waitForEnter()
+					return
+				}
+				// Registrar y calificar
 				history.AddPlayback(currentUser.ID, contentID, "audio")
 				rateAudioContent(contentID)
+			} else {
+				fmt.Println("ID inválido.")
+				waitForEnter()
 			}
 		}
 	} else {
