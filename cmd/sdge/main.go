@@ -7,6 +7,7 @@ import (
 	"SDGEStreaming/internal/categories"
 	"SDGEStreaming/internal/contentclass"
 	"SDGEStreaming/internal/errors"
+	"SDGEStreaming/internal/history"
 	"SDGEStreaming/internal/profiles"
 	"SDGEStreaming/internal/utils"
 	"bufio"
@@ -227,8 +228,8 @@ func showMainMenu() {
 	} else {
 		fmt.Println("1. Mi Perfil")
 		fmt.Println("2. Explorar Contenido")
-		fmt.Println("3. Mi Lista (Próximamente en AA2)")
-		fmt.Println("4. Historial de Reproducción (Próximamente en AA2)")
+		fmt.Println("3. Mi Lista")
+		fmt.Println("4. Historial de Reproducción")
 		fmt.Println("5. Configuraciones")
 		fmt.Println("6. Cerrar Sesión")
 		fmt.Println("7. Salir")
@@ -247,15 +248,13 @@ func showMainMenu() {
 		if currentUser.IsAdmin {
 			showUserManagement()
 		} else {
-			fmt.Println("Funcionalidad para AA2")
-			waitForEnter()
+			showMyList()
 		}
 	case "4":
 		if currentUser.IsAdmin {
 			showAudiovisualManagement()
 		} else {
-			fmt.Println("Funcionalidad para AA2")
-			waitForEnter()
+			showPlaybackHistory()
 		}
 	case "5":
 		if currentUser.IsAdmin {
@@ -279,7 +278,142 @@ func showMainMenu() {
 		}
 	}
 }
+// Mostrar historial de reproducción
+func showPlaybackHistory() {
+	fmt.Print("\033[H\033[2J")
+	showHeader()
+	fmt.Println("Historial de Reproducción")
+	fmt.Println("════════════════════════")
 
+	entries := history.GetHistory(currentUser.ID)
+	if len(entries) == 0 {
+		fmt.Println("No tienes historial de reproducción.")
+	} else {
+		for _, e := range entries {
+			fmt.Printf("• %s ID %d - %s\n", 
+				strings.Title(e.ContentType),
+				e.ContentID,
+				e.Timestamp.Format("02/01/2006 15:04"))
+		}
+	}
+
+	fmt.Println("────────────────────────────────────────────────────────────")
+	waitForEnter()
+}
+// Mostrar "Mi Lista" (favoritos)
+func showMyList() {
+	fmt.Print("\033[H\033[2J")
+	showHeader()
+	fmt.Println("Mi Lista (Favoritos)")
+	fmt.Println("═══════════════════")
+
+	favIDs := profiles.GetFavorites(currentUser.ID)
+	if len(favIDs) == 0 {
+		fmt.Println("No tienes contenido en tu lista.")
+	} else {
+		favorites := profiles.GetFavorites(currentUser.ID)
+		for _, fav := range favorites {
+			if fav.ContentType == "audiovisual" {
+				c, err := audiovisual.GetByID(fav.ContentID)
+				if err == nil && contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("[Audiovisual] ID %d: %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration))
+				}
+			} else if fav.ContentType == "audio" {
+				c, err := audio.GetByID(fav.ContentID)
+				if err == nil && contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("[Audio] ID %d: %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration) )
+				}
+			}
+		}
+	}
+
+	fmt.Println("\n1. Añadir contenido por ID")
+	fmt.Println("2. Volver")
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	option := readInput("Opción: ")
+	if option == "1" {
+		fmt.Println("\n¿Qué tipo de contenido deseas añadir?")
+		fmt.Println("1. Audiovisual")
+		fmt.Println("2. Audio")
+		typeOption := readInput("Seleccione (1 o 2): ")
+
+		if typeOption == "1" {
+			// Mostrar audiovisual
+			contents := audiovisual.ListAll()
+			if len(contents) == 0 {
+				fmt.Println("\nNo hay contenido audiovisual disponible.")
+				waitForEnter()
+				return
+			}
+			fmt.Println("\nContenido Audiovisual Disponible:")
+			fmt.Println("═════════════════════════════════")
+			for _, c := range contents {
+				if contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("ID: %d | %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration))
+				}
+			}
+
+			contentIDStr := readInput("\nIngrese el ID del contenido a añadir: ")
+			contentID, err := strconv.Atoi(contentIDStr)
+			if err != nil || contentID <= 0 {
+				fmt.Println("ID inválido.")
+				waitForEnter()
+				return
+			}
+
+			_, err = audiovisual.GetByID(contentID)
+			if err != nil {
+				fmt.Println("Contenido no encontrado.")
+				waitForEnter()
+				return
+			}
+
+			profiles.AddFavorite(currentUser.ID, contentID, "audiovisual")
+			fmt.Println("\n Audiovisual añadido a Mi Lista.")
+			waitForEnter()
+
+		} else if typeOption == "2" {
+			// Mostrar audio
+			contents := audio.ListAll()
+			if len(contents) == 0 {
+				fmt.Println("\nNo hay contenido de audio disponible.")
+				waitForEnter()
+				return
+			}
+			fmt.Println("\nContenido de Audio Disponible:")
+			fmt.Println("═════════════════════════════")
+			for _, c := range contents {
+				if contentclass.CanAccessContent(currentUser.Age, c.AgeRating) {
+					fmt.Printf("ID: %d | %s • %s\n", c.ID, c.Title, utils.FormatDuration(c.Duration))
+				}
+			}
+
+			contentIDStr := readInput("\nIngrese el ID del contenido a añadir: ")
+			contentID, err := strconv.Atoi(contentIDStr)
+			if err != nil || contentID <= 0 {
+				fmt.Println("ID inválido.")
+				waitForEnter()
+				return
+			}
+
+			_, err = audio.GetByID(contentID)
+			if err != nil {
+				fmt.Println("Contenido no encontrado.")
+				waitForEnter()
+				return
+			}
+
+			profiles.AddFavorite(currentUser.ID, contentID, "audio")
+			fmt.Println("\n Contenido de audio añadido a Mi Lista.")
+			waitForEnter()
+
+		} else {
+			fmt.Println("Opción inválida.")
+			waitForEnter()
+		}
+	}
+}
 // Mostrar perfil de usuario
 func showUserProfile() {
 	fmt.Print("\033[H\033[2J")
@@ -358,6 +492,7 @@ func showAudiovisualContent(isGuest bool) {
 		if contentIDStr != "0" {
 			contentID, err := strconv.Atoi(contentIDStr)
 			if err == nil && contentID > 0 {
+				history.AddPlayback(currentUser.ID, contentID, "audiovisual")
 				rateAudiovisualContent(contentID)
 			}
 		}
@@ -397,6 +532,7 @@ func showAudioContent(isGuest bool) {
 		if contentIDStr != "0" {
 			contentID, err := strconv.Atoi(contentIDStr)
 			if err == nil && contentID > 0 {
+				history.AddPlayback(currentUser.ID, contentID, "audio")
 				rateAudioContent(contentID)
 			}
 		}
