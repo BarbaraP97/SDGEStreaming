@@ -1,6 +1,6 @@
 # 📺 SDGEStreaming – Sistema de Gestión de Contenido Audiovisual y de Audio
 
-> **Fase AA2 – Paso 1**  
+> **Fase AA2 – Paso 1 y 2**  
 > Implementación de **Mi Lista (Favoritos)** e **Historial de Reproducción**  
 > Proyecto académico – Programación orientada a objetos en Go
 
