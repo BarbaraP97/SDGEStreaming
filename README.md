@@ -1,6 +1,12 @@
 
+<<<<<<< HEAD
 > **No se usan librerías externas.** Todo se implementó con la biblioteca estándar de Go.
 
+=======
+> > **Dependencias externas:**  
+> Todo el código de la aplicación usa la biblioteca estándar de Go, **excepto** el driver de base de datos SQLite:
+> - `github.com/mattn/go-sqlite3` para conectar Go con SQLite usando `database/sql`.
+>>>>>>> b9e3b62 (AA2_CULMINADO)
 ---
 
 ## Funcionalidades Implementadas (AA1)
@@ -28,4 +34,8 @@
    git clone https://github.com/tuusuario/SDGEStreaming.git
    cd SDGEStreaming
    go mod init SDGEStreaming
+<<<<<<< HEAD
    go run cmd/sdge/main.go
+=======
+   go run cmd/sdge/main.go
+>>>>>>> b9e3b62 (AA2_CULMINADO)
