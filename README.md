@@ -66,20 +66,33 @@ Además:
 
 📂 **Estructura del Proyecto (simplificada)**
 text
+
 Copy
+
 cmd/
+
   sdge/          -> Aplicación de consola (menús interactivos)
+  
     main.go
+ 
   sdge/web/      -> Servidor HTTP (API REST)
+  
     main.go
 
 internal/
+
   db/            -> Conexión y creación de esquema SQLite
+  
   models/        -> Modelos de dominio (User, Plan, Content, Profile, etc.)
+ 
   repositories/  -> Acceso a datos (UserRepo, ContentRepo, SubscriptionRepo…)
+  
   services/      -> Lógica de negocio (UserService, ContentService, PlaybackService…)
+  
   security/      -> Hash de contraseñas, validaciones básicas
+  
   utils/         -> Funciones auxiliares
+ 
   httpapi/       -> Handlers HTTP del API
 
 👤 **Usuario administrador por defecto**
@@ -118,6 +131,7 @@ Creará (si no existe) la base de datos sdgestreaming.db.
 Creará los planes por defecto y contenido inicial.
 Creará el usuario administrador por defecto.
 Mostrará el menú principal en la consola.
+
 🌐 **Ejecutar el API HTTP**
 El API HTTP expone parte de la funcionalidad para ser usada desde clientes externos.
 
@@ -129,6 +143,7 @@ El servidor:
 
 Usa la misma base de datos sdgestreaming.db que la aplicación de consola.
 Permite probar operaciones de registro, login, consulta de planes, consulta de contenido y valoraciones.
+
 📡 **Endpoints del API**
 1. Autenticación / Usuarios
 POST /api/register
@@ -268,6 +283,7 @@ Reglas de validación:
 user_id y content_id deben ser mayores que 0.
 rating debe estar entre 1.0 y 10.0.
 Si el contenido no existe o hay un problema en la lógica de negocio, responde con 400.
+
 🧪 **Ejemplos rápidos con PowerShell**
 Con el servidor corriendo (go run ./cmd/sdge/web):
 
