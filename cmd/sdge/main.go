@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	currentUser *CurrentUser
+	currentUser    *CurrentUser
+	currentProfile *models.Profile
 )
 
 type CurrentUser struct {
@@ -37,6 +38,7 @@ var (
 	contentService      *services.ContentService
 	subscriptionService *services.SubscriptionService
 	playbackService     *services.PlaybackService
+	profileService      *services.ProfileService
 
 	userRepo repositories.UserRepo
 )
@@ -54,6 +56,7 @@ func main() {
 	subscriptionRepo := repositories.NewSubscriptionRepo()
 	playbackHistoryRepo := repositories.NewPlaybackHistoryRepo()
 	favoriteRepo := repositories.NewFavoriteRepo()
+	profileRepo := repositories.NewProfileRepo()
 
 	// Crear usuario admin si no existe
 	adminUser, err := userRepo.FindByEmail("admin@sdge.com")
@@ -87,6 +90,7 @@ func main() {
 	contentService = services.NewContentService(contentRepo)
 	subscriptionService = services.NewSubscriptionService(subscriptionRepo, userRepo)
 	playbackService = services.NewPlaybackService(playbackHistoryRepo, favoriteRepo, contentRepo)
+	profileService = services.NewProfileService(profileRepo)
 
 	utils.ClearScreen()
 	runApplication()
@@ -131,7 +135,7 @@ func showAuthMenu() {
 func login() {
 	utils.ClearScreen()
 	fmt.Println("Iniciar Sesión")
-	fmt.Println("══════════════")
+	fmt.Println("════════════════")
 	email := utils.ReadLine("Email: ")
 	password := utils.ReadLine("Contraseña: ")
 
@@ -154,14 +158,22 @@ func login() {
 		AgeRating: user.AgeRating,
 		IsAdmin:   user.IsAdmin,
 	}
-	fmt.Printf("¡Bienvenido, %s!\n", user.Name)
+
+	// Elegir/crear perfil
+	selectProfile()
+
+	if currentProfile != nil {
+		fmt.Printf("¡Bienvenido, %s! Perfil activo: %s\n", currentUser.Name, currentProfile.Name)
+	} else {
+		fmt.Printf("¡Bienvenido, %s!\n", currentUser.Name)
+	}
 	utils.WaitForEnter()
 }
 
 func register() {
 	utils.ClearScreen()
 	fmt.Println("Registro de Nuevo Usuario")
-	fmt.Println("══════════════════════════")
+	fmt.Println("════════════════════════════")
 	name := utils.ReadLine("Nombre completo: ")
 	ageStr := utils.ReadLine("Edad (mínimo 13): ")
 	age, err := utils.ToInt(ageStr)
@@ -194,11 +206,126 @@ func register() {
 	utils.WaitForEnter()
 }
 
+func selectProfile() {
+	for {
+		utils.ClearScreen()
+		fmt.Println("Perfiles de la Cuenta")
+		fmt.Println("════════════════════════")
+
+		profiles, err := profileService.GetProfiles(currentUser.ID)
+		if err != nil {
+			fmt.Printf("Error al cargar perfiles: %v\n", err)
+			utils.WaitForEnter()
+			return
+		}
+
+		maxProfiles := getMaxProfilesForPlan(currentUser.PlanID)
+		fmt.Printf("Plan: %s | Perfiles permitidos: %d\n\n", currentUser.PlanName, maxProfiles)
+
+		if len(profiles) == 0 {
+			fmt.Println("No tienes perfiles creados todavía.")
+		} else {
+			fmt.Println("Perfiles disponibles:")
+			for i, p := range profiles {
+				fmt.Printf("%d. %s (Edad: %d, Clasificación: %s)\n", i+1, p.Name, p.Age, p.AgeRating)
+			}
+		}
+
+		fmt.Println("\nOpciones:")
+		fmt.Println("S. Seleccionar perfil")
+		fmt.Println("N. Nuevo perfil")
+		fmt.Println("E. Eliminar perfil")
+		fmt.Println("Q. Continuar (usar primer perfil si existe)")
+		choice := utils.ReadLine("Opción (S/N/E/Q): ")
+
+		switch choice {
+		case "S", "s":
+			if len(profiles) == 0 {
+				fmt.Println("No hay perfiles para seleccionar.")
+				utils.WaitForEnter()
+				continue
+			}
+			numStr := utils.ReadLine("Número de perfil: ")
+			num, err := utils.ToInt(numStr)
+			if err != nil || num < 1 || num > len(profiles) {
+				fmt.Println("Selección inválida.")
+				utils.WaitForEnter()
+				continue
+			}
+			currentProfile = &profiles[num-1]
+			return
+
+		case "N", "n":
+			if len(profiles) >= maxProfiles {
+				fmt.Println("Ya alcanzaste el máximo de perfiles para tu plan.")
+				utils.WaitForEnter()
+				continue
+			}
+			name := utils.ReadLine("Nombre del nuevo perfil: ")
+			ageStr := utils.ReadLine("Edad del perfil: ")
+			age, err := utils.ToInt(ageStr)
+			if err != nil {
+				fmt.Println("Edad inválida.")
+				utils.WaitForEnter()
+				continue
+			}
+			profile, err := profileService.CreateProfile(currentUser.ID, age, name)
+			if err != nil {
+				fmt.Printf("Error al crear perfil: %v\n", err)
+				utils.WaitForEnter()
+				continue
+			}
+			currentProfile = profile
+			return
+
+		case "E", "e":
+			if len(profiles) == 0 {
+				fmt.Println("No hay perfiles para eliminar.")
+				utils.WaitForEnter()
+				continue
+			}
+			numStr := utils.ReadLine("Número de perfil a eliminar: ")
+			num, err := utils.ToInt(numStr)
+			if err != nil || num < 1 || num > len(profiles) {
+				fmt.Println("Selección inválida.")
+				utils.WaitForEnter()
+				continue
+			}
+			toDelete := profiles[num-1]
+			confirm := utils.ReadLine("¿Seguro que desea eliminar el perfil '" + toDelete.Name + "'? (s/n): ")
+			if confirm == "s" || confirm == "S" {
+				if err := profileService.DeleteProfile(toDelete.ID); err != nil {
+					fmt.Printf("Error al eliminar perfil: %v\n", err)
+				} else {
+					if currentProfile != nil && currentProfile.ID == toDelete.ID {
+						currentProfile = nil
+					}
+					fmt.Println("Perfil eliminado.")
+				}
+				utils.WaitForEnter()
+			}
+
+		case "Q", "q":
+			if currentProfile == nil && len(profiles) > 0 {
+				currentProfile = &profiles[0]
+			}
+			return
+
+		default:
+			fmt.Println("Opción inválida.")
+			utils.WaitForEnter()
+		}
+	}
+}
+
 func showMainMenu() {
 	utils.ClearScreen()
 	fmt.Println("Menú Principal")
-	fmt.Println("══════════════")
+	fmt.Println("════════════════")
 	fmt.Printf("Hola, %s (%s)\n", currentUser.Name, currentUser.PlanName)
+	if currentProfile != nil {
+		fmt.Printf("Perfil: %s (%s)\n", currentProfile.Name, currentProfile.AgeRating)
+	}
 	fmt.Println()
 	fmt.Println("1. Inicio")
 	fmt.Println("2. Tendencias")
@@ -244,8 +371,8 @@ func showMainMenu() {
 func showHome() {
 	utils.ClearScreen()
 	fmt.Println("Inicio")
-	fmt.Println("══════")
-	fmt.Println("¡Bienvenido a tu página de inicio!\n")
+	fmt.Println("════════")
+	fmt.Println("¡Bienvenido a tu página de inicio!")
 
 	fmt.Println("► Continuar viendo:")
 	continueWatching, _ := playbackService.GetContinueWatching(currentUser.ID)
@@ -278,7 +405,7 @@ func showHome() {
 func showTrending() {
 	utils.ClearScreen()
 	fmt.Println("Tendencias")
-	fmt.Println("══════════")
+	fmt.Println("════════════")
 
 	fmt.Println("\n🎬 Contenido Audiovisual Popular:")
 	audiovisuals, err := contentService.GetAllAudiovisual()
@@ -313,7 +440,7 @@ func browseContent(isGuest bool) {
 	for {
 		utils.ClearScreen()
 		fmt.Println("Explorar Contenido")
-		fmt.Println("══════════════════")
+		fmt.Println("════════════════════")
 		fmt.Println("1. Contenido Audiovisual")
 		fmt.Println("2. Contenido de Audio")
 		fmt.Println("3. Volver")
@@ -335,7 +462,7 @@ func browseContent(isGuest bool) {
 }
 
 func browseAudiovisual(isGuest bool) {
-	contents, err := contentService.GetAllAudiovisualForUser(currentUser.AgeRating)
+	contents, err := contentService.GetAllAudiovisualForUser(getEffectiveAgeRating())
 	if err != nil {
 		fmt.Printf("Error al cargar contenido: %v\n", err)
 		utils.WaitForEnter()
@@ -412,7 +539,7 @@ func browseAudiovisual(isGuest bool) {
 }
 
 func browseAudio(isGuest bool) {
-	contents, err := contentService.GetAllAudioForUser(currentUser.AgeRating)
+	contents, err := contentService.GetAllAudioForUser(getEffectiveAgeRating())
 	if err != nil {
 		fmt.Printf("Error al cargar contenido: %v\n", err)
 		utils.WaitForEnter()
@@ -490,7 +617,7 @@ func browseAudio(isGuest bool) {
 func showMyList() {
 	utils.ClearScreen()
 	fmt.Println("Mi Lista")
-	fmt.Println("════════")
+	fmt.Println("══════════")
 
 	favorites, err := playbackService.GetFavorites(currentUser.ID)
 	if err != nil {
@@ -534,17 +661,22 @@ func showProfileMenu() {
 	for {
 		utils.ClearScreen()
 		fmt.Println("Mi Perfil")
-		fmt.Println("═════════")
+		fmt.Println("═══════════")
 		fmt.Printf("Nombre: %s\n", currentUser.Name)
 		fmt.Printf("Email: %s\n", currentUser.Email)
 		fmt.Printf("Plan actual: %s\n", currentUser.PlanName)
 		fmt.Printf("Edad: %d\n", currentUser.Age)
 		fmt.Printf("Clasificación: %s\n", currentUser.AgeRating)
+		if currentProfile != nil {
+			fmt.Printf("\nPerfil activo: %s (Edad: %d, Clasificación: %s)\n",
+				currentProfile.Name, currentProfile.Age, currentProfile.AgeRating)
+		}
 		fmt.Println()
 		fmt.Println("1. Cambiar Plan de Suscripción")
 		fmt.Println("2. Ver Métodos de Pago")
 		fmt.Println("3. Ver Historial de Reproducción")
-		fmt.Println("4. Volver al Menú Principal")
+		fmt.Println("4. Gestionar Perfiles")
+		fmt.Println("5. Volver al Menú Principal")
 		fmt.Print("\nSeleccione una opción: ")
 
 		option := utils.ReadLine("")
@@ -556,6 +688,8 @@ func showProfileMenu() {
 		case "3":
 			viewPlaybackHistory()
 		case "4":
+			selectProfile()
+		case "5":
 			return
 		default:
 			fmt.Println("Opción inválida.")
@@ -567,7 +701,7 @@ func showProfileMenu() {
 func viewPlaybackHistory() {
 	utils.ClearScreen()
 	fmt.Println("Historial de Reproducción")
-	fmt.Println("══════════════════════════")
+	fmt.Println("════════════════════════════")
 
 	history, err := playbackService.GetHistory(currentUser.ID)
 	if err != nil {
@@ -606,7 +740,7 @@ func viewPlaybackHistory() {
 func upgradePlan() {
 	utils.ClearScreen()
 	fmt.Println("Cambiar Plan de Suscripción")
-	fmt.Println("════════════════════════════")
+	fmt.Println("====")
 
 	plans, err := subscriptionService.GetAvailablePlans()
 	if err != nil {
@@ -691,7 +825,7 @@ func upgradePlan() {
 func viewPaymentMethods() {
 	utils.ClearScreen()
 	fmt.Println("Métodos de Pago")
-	fmt.Println("════════════════")
+	fmt.Println("══════════════════")
 	method, err := userService.GetDefaultPaymentMethod(currentUser.ID)
 	if err != nil {
 		fmt.Println("No tiene métodos de pago guardados.")
@@ -706,7 +840,7 @@ func viewPaymentMethods() {
 func showAdminPanel() {
 	utils.ClearScreen()
 	fmt.Println("Panel de Administración")
-	fmt.Println("════════════════════════")
+	fmt.Println("══════════════════════════")
 	fmt.Println("1. Gestionar Usuarios")
 	fmt.Println("2. Gestionar Contenido")
 	fmt.Println("3. Generar Reportes")
@@ -732,7 +866,7 @@ func showAdminPanel() {
 func manageUsers() {
 	utils.ClearScreen()
 	fmt.Println("Gestión de Usuarios")
-	fmt.Println("════════════════════")
+	fmt.Println("══════════════════════")
 	users, err := userService.GetAllUsers()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
@@ -753,7 +887,7 @@ func manageContent() {
 	for {
 		utils.ClearScreen()
 		fmt.Println("Gestión de Contenido")
-		fmt.Println("════════════════════")
+		fmt.Println("══════════════════════")
 		fmt.Println("1. Agregar Contenido Audiovisual")
 		fmt.Println("2. Agregar Contenido de Audio")
 		fmt.Println("3. Listar Contenido Audiovisual")
@@ -783,7 +917,7 @@ func manageContent() {
 func addAudiovisualContent() {
 	utils.ClearScreen()
 	fmt.Println("Agregar Contenido Audiovisual")
-	fmt.Println("══════════════════════════════")
+	fmt.Println("════════════════════════════════")
 
 	title := utils.ReadLine("Título: ")
 	contentType := utils.ReadLine("Tipo (movie/series/documentary): ")
@@ -819,7 +953,7 @@ func addAudiovisualContent() {
 func addAudioContent() {
 	utils.ClearScreen()
 	fmt.Println("Agregar Contenido de Audio")
-	fmt.Println("═══════════════════════════")
+	fmt.Println("════════════════════════════")
 
 	title := utils.ReadLine("Título: ")
 	contentType := utils.ReadLine("Tipo (song/podcast/audiobook): ")
@@ -853,7 +987,7 @@ func addAudioContent() {
 func listAudiovisualAdmin() {
 	utils.ClearScreen()
 	fmt.Println("Lista de Contenido Audiovisual")
-	fmt.Println("═══════════════════════════════")
+	fmt.Println("════════════════════════════════")
 
 	contents, err := contentService.GetAllAudiovisual()
 	if err != nil {
@@ -889,7 +1023,7 @@ func listAudioAdmin() {
 func generateReports() {
 	utils.ClearScreen()
 	fmt.Println("Generación de Reportes")
-	fmt.Println("═══════════════════════")
+	fmt.Println("════════════════════════")
 	users, err := userService.GetAllUsers()
 	if err != nil {
 		fmt.Printf("Error al cargar usuarios: %v\n", err)
@@ -922,8 +1056,9 @@ func generateReports() {
 
 func logout() {
 	currentUser = nil
+	currentProfile = nil
 	fmt.Println("Sesión cerrada correctamente.")
-	utils.WaitForEnter()
+	// quitamos utils.WaitForEnter() aquí para evitar doble pausa
 }
 
 func getPlanName(planID int) string {
@@ -939,6 +1074,29 @@ func getPlanName(planID int) string {
 	}
 }
 
+func getMaxProfilesForPlan(planID int) int {
+	switch planID {
+	case 1: // Free
+		return 1
+	case 2: // Estándar
+		return 2
+	case 3: // Premium 4K
+		return 4
+	default:
+		return 1
+	}
+}
+
+func getEffectiveAgeRating() string {
+	if currentProfile != nil {
+		return currentProfile.AgeRating
+	}
+	if currentUser != nil {
+		return currentUser.AgeRating
+	}
+	return "Adulto"
+}
+
 func playAudiovisual(contentID int) {
 	content, err := contentService.GetAudiovisualByID(contentID)
 	if err != nil {
@@ -949,11 +1107,11 @@ func playAudiovisual(contentID int) {
 
 	utils.ClearScreen()
 	fmt.Printf("▶ Reproduciendo: %s\n", content.Title)
-	fmt.Println("══════════════════════════════════════")
+	fmt.Println("════════════════════════════════════════")
 	fmt.Println("Simulando reproducción...")
 	fmt.Println("[████████████████████] 100%")
 	fmt.Printf("Duración total: %d minutos\n", content.Duration)
-	fmt.Println("══════════════════════════════════════")
+	fmt.Println("════════════════════════════════════════")
 
 	// Registrar en historial
 	if err := playbackService.AddToHistory(currentUser.ID, contentID, "audiovisual"); err != nil {
@@ -981,11 +1139,11 @@ func playAudio(contentID int) {
 
 	utils.ClearScreen()
 	fmt.Printf("♪ Reproduciendo: %s - %s\n", content.Artist, content.Title)
-	fmt.Println("══════════════════════════════════════")
+	fmt.Println("════════════════════════════════════════")
 	fmt.Println("Simulando reproducción...")
 	fmt.Println("[████████████████████] 100%")
 	fmt.Printf("Duración total: %d minutos\n", content.Duration)
-	fmt.Println("══════════════════════════════════════")
+	fmt.Println("════════════════════════════════════════")
 
 	// Registrar en historial
 	if err := playbackService.AddToHistory(currentUser.ID, contentID, "audio"); err != nil {
@@ -1006,7 +1164,7 @@ func playAudio(contentID int) {
 func rateContent(contentID int, contentType string) {
 	utils.ClearScreen()
 	fmt.Println("Calificar Contenido")
-	fmt.Println("════════════════════")
+	fmt.Println("══════════════════════")
 	fmt.Println("Ingrese su calificación (1.0 - 10.0)")
 	ratingStr := utils.ReadLine("Calificación: ")
 

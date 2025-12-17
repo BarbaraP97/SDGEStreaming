@@ -263,5 +263,8 @@ func (r *sqliteUserRepo) AddPaymentMethod(pm *models.PaymentMethod) error {
 		pm.ExpiryYear,
 		pm.IsDefault,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("error inserting payment method: %w", err)
+	}
+	return nil
 }

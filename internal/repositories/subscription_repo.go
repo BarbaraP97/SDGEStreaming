@@ -113,11 +113,13 @@ func (r *sqliteSubscriptionRepo) FindByUserID(userID int) (*models.Subscription,
 	return &s, nil
 }
 
-// solucion del error GetPlanByID method defined
-// add this method to the subscription_repo.go file
+//
+// OBTENER PLAN POR ID
+//
+
 func (r *sqliteSubscriptionRepo) GetPlanByID(planID int) (*models.Plan, error) {
 	query := `
-		SELECT id, name, price
+		SELECT id, name, price, max_quality, max_devices
 		FROM plans
 		WHERE id = ?
 	`
@@ -129,6 +131,8 @@ func (r *sqliteSubscriptionRepo) GetPlanByID(planID int) (*models.Plan, error) {
 		&p.ID,
 		&p.Name,
 		&p.Price,
+		&p.MaxQuality,
+		&p.MaxDevices,
 	)
 
 	if err == sql.ErrNoRows {
@@ -204,7 +208,7 @@ func (r *sqliteSubscriptionRepo) Cancel(userID int) error {
 
 func (r *sqliteSubscriptionRepo) GetAllPlans() ([]models.Plan, error) {
 	query := `
-		SELECT id, name, price
+		SELECT id, name, price, max_quality, max_devices
 		FROM plans
 	`
 
@@ -222,6 +226,8 @@ func (r *sqliteSubscriptionRepo) GetAllPlans() ([]models.Plan, error) {
 			&p.ID,
 			&p.Name,
 			&p.Price,
+			&p.MaxQuality,
+			&p.MaxDevices,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning plan row: %w", err)
 		}

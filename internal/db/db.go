@@ -16,7 +16,7 @@ func InitDB(dbPath string) error {
 	if err != nil {
 		return fmt.Errorf("error al abrir la base de datos: %w", err)
 	}
-	
+
 	DB.SetMaxOpenConns(1)
 
 	// Ejecutar el schema SQL
@@ -115,6 +115,17 @@ CREATE TABLE IF NOT EXISTS favorites (
     added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE(user_id, content_id, content_type)
+);
+
+-- Tabla de perfiles por cuenta
+CREATE TABLE IF NOT EXISTS profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    age INTEGER NOT NULL,
+    age_rating TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 `
 	_, err = DB.Exec(schema)

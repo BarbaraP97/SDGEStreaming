@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS favorites (
     UNIQUE(user_id, content_id, content_type)
 );
 
+-- Tabla de perfiles por cuenta
+CREATE TABLE IF NOT EXISTS profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    age INTEGER NOT NULL,
+    age_rating TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 INSERT OR IGNORE INTO plans (id, name, price, max_quality, max_devices)
 VALUES
     (1, 'Free', 0.0, 'SD', 1),
