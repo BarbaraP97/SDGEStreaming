@@ -1,68 +1,138 @@
 # 📺 SDGEStreaming – Sistema de Gestión de Contenido Audiovisual y de Audio
 
-> **Proyecto Final**   
-> Proyecto académico – Programación orientada a objetos en Go
+> **Proyecto Final**  
+> Programación orientada a objetos en Go – Backend para plataforma de streaming
 
 ---
 
 ## 📌 Descripción General
 
-**SDGEStreaming** es un sistema de gestión de contenido audiovisual y de audio desarrollado en **Go (Golang)**, diseñado con una arquitectura modular y separación clara de responsabilidades. Durante la **fase AA1**, se establecieron los cimientos del sistema: registro y login de usuarios, exploración y calificación del contenido.
+**SDGEStreaming** es un backend académico desarrollado en **Go (Golang)** para una plataforma de streaming de contenido audiovisual y de audio.  
+El sistema está diseñado con una **arquitectura por capas** (modelos, repositorios, servicios, handlers/API) y una base de datos **SQLite**.
 
-En la **fase AA2 – Paso 1 y Paso 2**, se han activado e implementado dos funcionalidades clave anunciadas previamente:
+### Evolución del proyecto
 
-- ✅ **Mi Lista**: gestión de favoritos por tipo de contenido (audio / audiovisual).
-- ✅ **Historial de Reproducción**: registro de reproducciones con validación de acceso
+- **AA1 – Fase inicial**
+  - Registro e inicio de sesión de usuarios.
+  - Exploración de contenido.
+  - Sistema de calificación de contenido (ratings).
 
-El sistema se implementa **protección a menores** (clasificación por edad)
-Se implenta interfaz intuitiva, segura y validada.
+- **AA2 – Paso 1 y Paso 2**
+  - Activación de **Mi Lista (favoritos)**.
+  - Implementación de **Historial de reproducción**.
+  - Refuerzo de la **protección a menores** mediante clasificación por edad.
+  - Mejora del flujo de menús de la **aplicación de consola**.
+
+- **Trabajo final (este entregable)**
+  - Implementación de **perfiles por usuario** (según plan de suscripción).
+  - Exposición de una **API HTTP REST** para registro, login, planes, contenido y valoraciones.
+  - Simulación de **cambio de plan con pago** (validación de tarjeta).
+  - Corrección y alineación de modelos con el esquema de base de datos.
+  - Ajustes para ejecución en Windows con `CGO_ENABLED=1` y `go-sqlite3`.
+
+---
 
 ## 🧩 Funcionalidades Implementadas
 
-| Funcionalidad              | Descripción                                                                 |
-|---------------------------|-----------------------------------------------------------------------------|
-| **Autenticación segura**  | Registro e inicio de sesión con validaciones y hashing de contraseñas.       |
-| **Catálogo filtrado**     | Listado de contenido accesible según la edad del usuario activo.             |
-| **Mi Lista (Favoritos)**  | Añadir y visualizar contenido favorito, diferenciando por tipo (audio/visual). |
-| **Historial de Reproducción** | Registro automático tras reproducción exitosa. |
-| **Calificación de ítems** | Calificación inmediata y promedio ajustado. |
-| **Tendencias**            | Muestra contenido más popular según calificaciones.                         |
-| **Menú administrador**    | Opciones ocultas accesibles solo para usuarios con rol `admin`.              |
+### A nivel de dominio
+
+| Funcionalidad                        | Descripción                                                                                          |
+|-------------------------------------|------------------------------------------------------------------------------------------------------|
+| **Autenticación segura**            | Registro e inicio de sesión con validaciones y hashing de contraseñas (`bcrypt`).                   |
+| **Perfiles por usuario**            | Cada cuenta puede tener varios perfiles (niño, adolescente, adulto) según el plan de suscripción.  |
+| **Clasificación por edad**          | El perfil tiene una clasificación de edad; el contenido se filtra automáticamente según esa regla. |
+| **Catálogo de contenido**           | Gestión de contenido audiovisual y de audio con metadatos y rating promedio.                        |
+| **Mi Lista (Favoritos)**            | Añadir y visualizar contenido favorito por tipo (audio / audiovisual).                              |
+| **Historial de reproducción**       | Registro automático de reproducciones exitosas.                                                      |
+| **Calificación de ítems (ratings)** | Valoración de contenido de 1.0 a 10.0, con promedio recalculado.                                    |
+| **Planes y suscripciones**          | Planes Free, Estándar y Premium 4K, con límites de calidad y cantidad de perfiles.                  |
+| **Simulación de pagos**             | Cambio de plan con validación de tarjeta y almacenamiento no sensible de datos.                     |
+| **Menú administrador**              | Opciones adicionales visibles solo para usuarios con rol `admin`.                                  |
+
+### A nivel de interfaz
+
+- **Aplicación de consola**  
+  - Menús de texto para:
+    - Iniciar sesión / registrarse.
+    - Explorar contenido audiovisual y de audio.
+    - Reproducir, valorar, ver historial y favoritos.
+    - Gestionar perfiles (según plan).
+    - Acceder a opciones de administración (admin).
+
+- **API HTTP REST**  
+  - Endpoints para:
+    - Registro y login.
+    - Consulta de planes.
+    - Cambio de plan con tarjeta simulada.
+    - Listado de contenido audiovisual y de audio.
+    - Registro de valoraciones (ratings).
+
+---
+
+## 🧱 Arquitectura del Proyecto
+
+Arquitectura en capas con separación clara de responsabilidades:
+
+- **cmd/**
+  - `sdge/` → Aplicación de consola (menús interactivos).
+  - `sdge/web/` → Servidor HTTP (API REST).
+
+- **internal/**
+  - `db/` → Conexión y creación del esquema SQLite.
+  - `models/` → Modelos de dominio (`User`, `Profile`, `Plan`, `Audiovisual`, `Audio`, etc.).
+  - `repositories/` → Acceso a datos (`UserRepo`, `ContentRepo`, `SubscriptionRepo`, `PlaybackHistoryRepo`, `FavoriteRepo`, …).
+  - `services/` → Lógica de negocio (`UserService`, `ContentService`, `SubscriptionService`, `PlaybackService`, `ProfileService`).
+  - `security/` → Hash de contraseñas y utilidades de seguridad.
+  - `utils/` → Funciones auxiliares (validaciones, helpers).
+  - `httpapi/` → Handlers HTTP de la API (rutas, parseo de JSON, respuestas).
+
+Esta estructura facilita pruebas, mantenimiento y extensiones futuras.
 
 ---
 
 ## ⚙️ Estilo de Código
-  
-- **Estructuras de datos**: `struct` usadas únicamente para agrupar datos (sin comportamiento).
-- **Flujo de control**: Validaciones tempranas, retorno explícito, sin excepciones.
+
+- **Programación orientada a objetos en Go**
+  - Uso de `struct` para representar entidades de dominio.
+  - Interfaces para abstraer repositorios y servicios donde es necesario.
+  - Métodos asociados a servicios para encapsular la lógica de negocio.
+
+- **Buenas prácticas**
+  - Validaciones tempranas de entrada.
+  - Manejo explícito de errores (`error`) y mensajes claros al usuario.
+  - Separación de responsabilidades por paquetes y capas.
+
+---
 
 ## 📦 Dependencias Externas
 
 El proyecto utiliza las siguientes librerías de Go:
 
-| Librería                                      | Propósito                                                                 |
-|----------------------------------------------|---------------------------------------------------------------------------|
-| [`golang.org/x/crypto/bcrypt`](https://pkg.go.dev/golang.org/x/crypto/bcrypt) | Hashing seguro de contraseñas (`bcrypt`).                                |
-| [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3) | Soporte para persistencia en SQLite. |
+| Librería                                                                              | Propósito                                  |
+|---------------------------------------------------------------------------------------|--------------------------------------------|
+| [`golang.org/x/crypto/bcrypt`](https://pkg.go.dev/golang.org/x/crypto/bcrypt)        | Hashing seguro de contraseñas (`bcrypt`). |
+| [`github.com/mattn/go-sqlite3`](https://github.com/mattn/go-sqlite3)                 | Driver SQLite3 para `database/sql`.       |
 
-> ⚠️ **Nota**: `go-sqlite3` requiere un compilador C para su correcto funciónamiento. Asegúrese de tener uno configurado en su entorno de desarrollo.
+> ⚠️ **Nota:** `go-sqlite3` requiere **CGO habilitado** y un **compilador C** instalado.  
+> En Windows se utilizó **MSYS2 / mingw-w64**.
+
+---
 
 ## 🛠️ Requisitos del Entorno
 
-- **Lenguaje**: Go (Golang) ≥ 1.20
-- **Editor recomendado**: Visual Studio Code (con terminal integrada)
-- **Control de versiones**: Git
-- **Compilador C**: necesario para `github.com/mattn/go-sqlite3`
-  - En Windows se usó **MSYS2 / mingw-w64**.
-  - En Linux / macOS puede usarse `gcc` o `clang`.
+- **Lenguaje:** Go ≥ 1.20  
+- **Editor recomendado:** Visual Studio Code (con terminal integrada)  
+- **Control de versiones:** Git  
+- **Base de datos:** SQLite (archivo `sdgestreaming.db`)  
+- **Compilador C:** necesario para `go-sqlite3`
+  - Windows: MSYS2 / mingw-w64.
+  - Linux / macOS: `gcc` o `clang`.
 
-Además:
+Antes de ejecutar:
 
-- **CGO habilitado** (para que `go-sqlite3` funcione)
-
-  ```powershell
-  # Windows (PowerShell)
-  $env:CGO_ENABLED = "1"
+```powershell
+# Windows (PowerShell)
+$env:CGO_ENABLED = "1"
 
 📂 **Estructura del Proyecto (simplificada)**
 text
